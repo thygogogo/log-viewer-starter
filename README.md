@@ -1,6 +1,6 @@
-# Demo Log Viewer Starter（`demo-log-viewer`）
+# Log Viewer Starter（`log-viewer`）
 
-这是一个用于在 **Spring Boot 2.x（Java 8）** 中直接引入的日志查看组件（Starter 形态），支持：
+这是一个用于在 **Spring Boot ** 中直接引入的日志查看组件（Starter 形态），支持：
 
 - REST 拉取日志（游标分页）
 - WebSocket 实时推送日志
@@ -44,7 +44,6 @@ logviewer:
 logviewer:
   enabled: true                  # 是否启用该 Starter（默认 true）
   autoDetectLogback: true        # 是否自动从 logback-spring.xml 探测 info/error 日志文件路径（默认 true）
-  logPath: /var/log/app.log      # 当 autoDetectLogback=false 时使用（默认 /var/log/app.log）
   maxConnections: 2              # WebSocket 最大同时查看连接数（默认 2）
 ```
 
