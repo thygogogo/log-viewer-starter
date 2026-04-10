@@ -1,0 +1,18 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: demo-log-viewer
+
+logging:
+  config: classpath:logback-spring.xml
+  level:
+    root: info
+
+logviewer:
+#  logPath: logs/ai-chat-demo.log
+  enabled: true
+  autoDetectLogback: true
+  accessKey: RUMTXYn4xPVqkeAmM27NzImkkuVzgZvl
+  maxConnections: 2

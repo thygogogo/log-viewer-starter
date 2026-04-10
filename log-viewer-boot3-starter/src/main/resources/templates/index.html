@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>日志查看器</title>
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}" href="/webjars/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}" href="/webjars/bootstrap-icons/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --lv-bg: #f5f7fa;
+            --lv-surface: #ffffff;
+            --lv-border: #d3dae6;
+            --lv-border-subtle: #e4e7ef;
+            --lv-text: #343741;
+            --lv-text-muted: #69707d;
+            --lv-accent: #006bb4;
+            --lv-accent-hover: #005a98;
+            --lv-error: #bd271e;
+            --lv-warn: #ba4f00;
+            --lv-row-hover: #f1f4f8;
+            --lv-mono: "IBM Plex Mono", ui-monospace, "Consolas", monospace;
+            --lv-ui: "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        body.lv-body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: var(--lv-ui);
+            font-size: 14px;
+            color: var(--lv-text);
+            background: var(--lv-bg);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .lv-app {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1.25rem 2rem;
+        }
+
+        .lv-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: var(--lv-surface);
+            border: 1px solid var(--lv-border);
+            border-radius: 6px;
+            padding: 0.875rem 1rem;
+            margin: 1rem 0 0.75rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem 1rem;
+        }
+
+        .lv-toolbar-brand {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            margin-right: 0.5rem;
+            padding-right: 1rem;
+            border-right: 1px solid var(--lv-border-subtle);
+        }
+
+        .lv-toolbar-brand strong {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: var(--lv-text);
+        }
+
+        .lv-toolbar-brand span {
+            font-size: 11px;
+            color: var(--lv-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .lv-input {
+            border: 1px solid var(--lv-border);
+            border-radius: 4px;
+            padding: 0.4rem 0.65rem;
+            font-size: 13px;
+            color: var(--lv-text);
+            background: var(--lv-surface);
+            min-width: 200px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .lv-input:focus {
+            outline: none;
+            border-color: var(--lv-accent);
+            box-shadow: 0 0 0 2px rgba(0, 107, 180, 0.15);
+        }
+
+        .lv-input-sm {
+            min-width: 0;
+            max-width: 170px;
+            padding: 0.35rem 0.5rem;
+            font-size: 12px;
+        }
+
+        .lv-toolbar .form-check-label {
+            font-size: 13px;
+            color: var(--lv-text-muted);
+        }
+
+        .lv-toolbar .form-check-input {
+            border-color: var(--lv-border);
+        }
+
+        .lv-toolbar .form-check-input:checked {
+            background-color: var(--lv-accent);
+            border-color: var(--lv-accent);
+        }
+
+        .lv-btn {
+            font-size: 13px;
+            font-weight: 500;
+            padding: 0.4rem 0.85rem;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .lv-btn-primary {
+            background: var(--lv-accent);
+            color: #fff;
+            border-color: var(--lv-accent);
+        }
+
+        .lv-btn-primary:hover {
+            background: var(--lv-accent-hover);
+            border-color: var(--lv-accent-hover);
+            color: #fff;
+        }
+
+        .lv-btn-ghost {
+            background: var(--lv-surface);
+            color: var(--lv-text-muted);
+            border-color: var(--lv-border);
+        }
+
+        .lv-btn-ghost:hover {
+            background: var(--lv-row-hover);
+            color: var(--lv-text);
+        }
+
+        .lv-stream {
+            position: relative;
+            background: var(--lv-surface);
+            border: 1px solid var(--lv-border);
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .lv-logs-loading {
+            position: absolute;
+            inset: 0;
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(2px);
+            font-family: var(--lv-ui);
+            font-size: 14px;
+            color: var(--lv-text);
+            pointer-events: none;
+        }
+
+        .lv-logs-loading .lv-logs-loading-row {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+
+        .lv-logs-loading .lv-logs-loading-seconds {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            color: var(--lv-accent);
+        }
+
+        .lv-table-wrap {
+            overflow: auto;
+            max-height: calc(100vh - 220px);
+            min-height: 280px;
+        }
+
+        .log-table {
+            margin: 0;
+            font-size: 12px;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .log-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            font-family: var(--lv-ui);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--lv-text-muted);
+            background: #fafbfd;
+            border-bottom: 1px solid var(--lv-border);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+
+        .log-table tbody tr.lv-row {
+            border-left: 3px solid transparent;
+            border-bottom: 1px solid var(--lv-border-subtle);
+            transition: background 0.1s;
+        }
+
+        .log-table tbody tr.lv-row:hover {
+            background: var(--lv-row-hover);
+        }
+
+        .log-table tbody tr.lv-row > td {
+            padding: 0.45rem 0.75rem;
+            vertical-align: top;
+            font-family: var(--lv-mono);
+            line-height: 1.45;
+            color: #2b2e35;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .log-table tbody tr.log-level-ERROR,
+        .log-table tbody tr.log-level-error {
+            border-left-color: var(--lv-error);
+        }
+        .log-table tbody tr.log-level-ERROR > td,
+        .log-table tbody tr.log-level-error > td {
+            color: var(--lv-error);
+        }
+
+        .log-table tbody tr.log-level-WARN,
+        .log-table tbody tr.log-level-warn {
+            border-left-color: var(--lv-warn);
+        }
+        .log-table tbody tr.log-level-WARN > td,
+        .log-table tbody tr.log-level-warn > td {
+            color: var(--lv-warn);
+        }
+
+        .log-table tbody tr.log-level-INFO > td,
+        .log-table tbody tr.log-level-info > td {
+            color: #1a1c21;
+        }
+
+        .log-table tbody tr.lv-row-empty td {
+            font-family: var(--lv-ui);
+            color: var(--lv-text-muted);
+            text-align: center;
+            padding: 2.5rem 1rem;
+        }
+
+        .pagination-controls {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+            padding: 0.65rem 0.75rem;
+            background: var(--lv-surface);
+            border: 1px solid var(--lv-border);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--lv-text-muted);
+        }
+
+        .pagination-controls #pageInfo {
+            color: var(--lv-text);
+            font-weight: 500;
+        }
+
+        .lv-btn-outline {
+            background: #fff;
+            border: 1px solid var(--lv-accent);
+            color: var(--lv-accent);
+        }
+
+        .lv-btn-outline:hover:not(:disabled) {
+            background: rgba(0, 107, 180, 0.06);
+        }
+
+        .lv-btn-outline:disabled {
+            opacity: 0.45;
+        }
+
+        .lv-live-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: var(--lv-ui);
+            white-space: nowrap;
+            border: 1px solid transparent;
+        }
+
+        .lv-live-on {
+            background: #e6f4ea;
+            color: #1e7e34;
+            border-color: #b7dfb9;
+        }
+
+        .lv-live-wait {
+            background: #fff8e6;
+            color: #8a6d3b;
+            border-color: #f0e0b2;
+        }
+
+        .lv-live-off {
+            background: #f1f4f8;
+            color: var(--lv-text-muted);
+            border-color: var(--lv-border-subtle);
+        }
+
+        .lv-live-stop {
+            background: #fcefef;
+            color: var(--lv-error);
+            border-color: #f5c6cb;
+        }
+    </style>
+</head>
+<body class="lv-body">
+    <div th:if="${logviewerPage}" class="lv-app">
+        <header class="lv-toolbar">
+            <div class="lv-toolbar-brand">
+                <strong>日志查看</strong>
+                <span>Discover</span>
+            </div>
+            <input type="text" id="keyword" class="lv-input" placeholder="请输入关键字搜索">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="archiveMode">
+                    <label class="form-check-label" for="archiveMode">归档（按日期搜索对应.gz文件）</label>
+                </div>
+                <input type="date" id="archiveDate" class="lv-input lv-input-sm d-none">
+            </div>
+            <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="liveStreamEnabled" checked>
+                    <label class="form-check-label" for="liveStreamEnabled">实时日志</label>
+                </div>
+                <span id="liveWsStatus" class="lv-live-badge lv-live-wait" title="实时日志 WebSocket">连接中…</span>
+                <button type="button" id="searchBtn" class="lv-btn lv-btn-primary">查询</button>
+                <button type="button" id="refreshBtn" class="lv-btn lv-btn-ghost" title="刷新">刷新</span></button>
+            </div>
+        </header>
+
+        <div class="lv-stream">
+            <div id="lvLogsLoading" class="lv-logs-loading d-none" aria-live="polite" aria-busy="true">
+                <div class="lv-logs-loading-row">
+                    <span>正在加载日志…</span>
+                </div>
+                <div class="text-secondary" style="font-size: 13px;">
+                    已等待 <span id="lvLogsLoadingSeconds" class="lv-logs-loading-seconds">0</span> 秒
+                </div>
+            </div>
+            <div class="lv-table-wrap table-responsive">
+                <table class="log-table">
+                    <thead>
+                        <tr>
+                            <th>LOG CONTENT</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="pagination-controls">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <span id="pageInfo">已加载 0 条</span>
+                <button type="button" id="nextPage" class="lv-btn lv-btn-outline d-none">显示更多</button>
+            </div>
+        </footer>
+    </div>
+
+    <script th:if="${logviewerPage}" th:src="@{/webjars/jquery/jquery.min.js}" src="/webjars/jquery/jquery.min.js"></script>
+    <script th:if="${logviewerPage}" th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}" src="/webjars/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script th:if="${logviewerPage}">
+        // 兼容被其他项目引入的场景：使用 Thymeleaf 生成带 context-path 的 URL
+        const logsApiUrl = /*[[@{/logviewer/logs}]]*/ '/logviewer/logs';
+        const wsPath = /*[[@{/logviewer/ws/logs}]]*/ '/logviewer/ws/logs';
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const wsUrl = wsProtocol + window.location.host + wsPath;
+
+        /** 固定每页条数（与后端 default 一致），避免 DOM 无 #pageSize 时 size 未传 */
+        const PAGE_SIZE = 100;
+
+        let cursorHistory = [null]; // cursor for each loaded page
+        let cursorIndex = 0; // current page index in cursorHistory
+        let hasNext = false;
+        let nextCursor = null;
+        let isStreaming = false;
+        /** 页面最多保留的日志条数（时间倒序时去掉最旧行，即表格底部） */
+        const MAX_RENDER_ROWS = 1000;
+        /** 行首时间（与 logback 一致），用于表格全局按时间倒序（越新越靠上） */
+        const LINE_TS_PREFIX = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})/;
+
+        function sortKeyFromLogText(text) {
+            if (text == null || text === '') return '';
+            const first = String(text).split('\n')[0];
+            const m = first.match(LINE_TS_PREFIX);
+            return m ? m[1] : '';
+        }
+
+        /** 按行首时间倒序（越新越靠上）；无时间键的行排在最后 */
+        function sortLogTableByTimeDesc() {
+            const tbody = $('#logsTableBody');
+            const rows = tbody.children('tr').get();
+            rows.sort(function(a, b) {
+                const ka = a.getAttribute('data-sort-key') || '';
+                const kb = b.getAttribute('data-sort-key') || '';
+                if (!ka && !kb) return 0;
+                if (!ka) return 1;
+                if (!kb) return -1;
+                const c = kb.localeCompare(ka);
+                if (c !== 0) return c;
+                return String($(b).text()).localeCompare(String($(a).text()));
+            });
+            rows.forEach(function(row) { tbody.append(row); });
+        }
+
+        /** WebSocket 高频推送时合并到每帧最多排序一次，避免主线程长时间阻塞 */
+        let logTableSortRaf = null;
+        function scheduleSortLogTableAndTrim() {
+            if (logTableSortRaf != null) {
+                return;
+            }
+            logTableSortRaf = requestAnimationFrame(function() {
+                logTableSortRaf = null;
+                sortLogTableByTimeDesc();
+                trimTableRows();
+            });
+        }
+
+        /** 忽略过期的 POST 响应，避免两次请求交错导致重复或错乱 */
+        let loadLogsSeq = 0;
+        let logsLoadingTimer = null;
+        let logsLoadingShowTimeout = null;
+        const LOGS_LOADING_SHOW_DELAY_MS = 800;
+
+        function showLogsLoading() {
+            clearInterval(logsLoadingTimer);
+            logsLoadingTimer = null;
+            $('#lvLogsLoading').removeClass('d-none');
+            $('#lvLogsLoadingSeconds').text('0');
+            const start = Date.now();
+            logsLoadingTimer = setInterval(function() {
+                var s = Math.floor((Date.now() - start) / 1000);
+                $('#lvLogsLoadingSeconds').text(String(s));
+            }, 250);
+        }
+
+        function scheduleLogsLoadingShow(forSeq) {
+            clearTimeout(logsLoadingShowTimeout);
+            logsLoadingShowTimeout = setTimeout(function() {
+                logsLoadingShowTimeout = null;
+                if (forSeq === loadLogsSeq) {
+                    showLogsLoading();
+                }
+            }, LOGS_LOADING_SHOW_DELAY_MS);
+        }
+
+        function hideLogsLoading() {
+            clearTimeout(logsLoadingShowTimeout);
+            logsLoadingShowTimeout = null;
+            clearInterval(logsLoadingTimer);
+            logsLoadingTimer = null;
+            $('#lvLogsLoading').addClass('d-none');
+        }
+        /** 已在表格中出现过的日志指纹（REST 与 WebSocket 共用），消除「首屏 + 实时」重叠 */
+        const recentFpQueue = [];
+        const recentFpSet = new Set();
+        const MAX_RECENT_FP = 2500;
+
+        function logFingerprint(entry) {
+            if (!entry) return '';
+            const t = entry.rawLine != null ? entry.rawLine : entry.message;
+            return t == null ? '' : String(t);
+        }
+
+        function rememberFingerprint(fp) {
+            if (!fp) return;
+            if (recentFpSet.has(fp)) return;
+            recentFpSet.add(fp);
+            recentFpQueue.push(fp);
+            while (recentFpQueue.length > MAX_RECENT_FP) {
+                const old = recentFpQueue.shift();
+                recentFpSet.delete(old);
+            }
+        }
+
+        function rememberFingerprintsFromEntries(entries) {
+            if (!entries || !entries.length) return;
+            entries.forEach(function(e) { rememberFingerprint(logFingerprint(e)); });
+        }
+
+        function appendLogRowToBody(text, level) {
+            const tr = $('<tr>').addClass('lv-row').addClass(level ? ('log-level-' + level) : '');
+            tr.attr('data-sort-key', sortKeyFromLogText(text));
+            tr.append($('<td>').text(text));
+            $('#logsTableBody').append(tr);
+        }
+
+        function prependLogRowToBody(text, level) {
+            const tr = $('<tr>').addClass('lv-row').addClass(level ? ('log-level-' + level) : '');
+            tr.attr('data-sort-key', sortKeyFromLogText(text));
+            tr.append($('<td>').text(text));
+            $('#logsTableBody').prepend(tr);
+        }
+
+        $(document).ready(function() {
+            if (window.__logViewerPageBound) {
+                return;
+            }
+            window.__logViewerPageBound = true;
+
+            loadLogs();
+
+            $('#searchBtn').click(function() {
+                cursorHistory = [null];
+                cursorIndex = 0;
+                loadLogs();
+            });
+
+            $('#archiveMode').change(function() {
+                const enabled = $('#archiveMode').is(':checked');
+                $('#archiveDate').toggleClass('d-none', !enabled);
+                cursorHistory = [null];
+                cursorIndex = 0;
+                loadLogs();
+            });
+
+            $('#archiveDate').change(function() {
+                cursorHistory = [null];
+                cursorIndex = 0;
+                loadLogs();
+            });
+
+            $('#refreshBtn').click(function() {
+                cursorHistory = [null];
+                cursorIndex = 0;
+                loadLogs();
+            });
+
+            $('#liveStreamEnabled').on('change', function() {
+                if ($(this).is(':checked')) {
+                    liveWsStopReconnect = false;
+                    logWsReconnectAttempt = 0;
+                    connectLogWebSocket();
+                } else {
+                    if (logWsReconnectTimer) {
+                        clearTimeout(logWsReconnectTimer);
+                        logWsReconnectTimer = null;
+                    }
+                    if (logWs) {
+                        var s = logWs;
+                        logWs = null;
+                        s.onclose = null;
+                        try {
+                            s.close();
+                        } catch (e) {
+                        }
+                    }
+                    updateLiveWsStatus('paused');
+                }
+            });
+
+            if ($('#liveStreamEnabled').is(':checked')) {
+                connectLogWebSocket();
+            } else {
+                updateLiveWsStatus('paused');
+            }
+
+            $('#nextPage').click(function() {
+                if (!hasNext || !nextCursor) {
+                    return;
+                }
+                cursorHistory[cursorIndex + 1] = nextCursor;
+                cursorIndex++;
+                loadLogs();
+            });
+        });
+
+        function loadLogs() {
+            const cursor = cursorHistory[cursorIndex];
+            const appendMode = !!cursor;
+            const params = {
+                keyword: $('#keyword').val(),
+                size: PAGE_SIZE
+            };
+            if (cursor) {
+                params.cursor = cursor;
+            }
+
+            // 归档查询：仅查 .gz（需要用户提供日期）
+            if ($('#archiveMode').is(':checked')) {
+                const archiveDate = $('#archiveDate').val();
+                if (!archiveDate) {
+                    return;
+                }
+                params.archiveDate = archiveDate;
+            }
+
+            const mySeq = ++loadLogsSeq;
+            hideLogsLoading();
+            scheduleLogsLoadingShow(mySeq);
+            $.post(logsApiUrl, params, function(data) {
+                if (mySeq !== loadLogsSeq) {
+                    return;
+                }
+                renderLogs(data, appendMode);
+            }).fail(function() {
+                if (mySeq !== loadLogsSeq) {
+                    return;
+                }
+                if (appendMode) {
+                    cursorIndex--;
+                    cursorHistory.pop();
+                    alert('加载更多失败');
+                } else {
+                    $('#logsTableBody').html('<tr class="lv-row-empty"><td class="text-danger">加载日志失败</td></tr>');
+                }
+            }).always(function() {
+                if (mySeq !== loadLogsSeq) {
+                    return;
+                }
+                hideLogsLoading();
+            });
+        }
+
+        function renderLogs(response, appendMode) {
+            const logs = response.content;
+            hasNext = response.hasNext;
+            nextCursor = response.nextCursor;
+            if (!appendMode) {
+                $('#logsTableBody').empty();
+            }
+            rememberFingerprintsFromEntries(logs);
+            if (logs.length === 0) {
+                if (!appendMode) {
+                    $('#logsTableBody').html('<tr class="lv-row-empty"><td>无匹配日志</td></tr>');
+                }
+            } else {
+                logs.forEach(function(entry) {
+                    const text = entry.rawLine || entry.message;
+                    appendLogRowToBody(text, entry.level);
+                });
+                sortLogTableByTimeDesc();
+                trimTableRows();
+            }
+            updatePagination();
+            var wrap = document.querySelector('.lv-table-wrap');
+            if (wrap && !appendMode) {
+                wrap.scrollTop = 0;
+            }
+        }
+
+        function updatePagination() {
+            var n = $('#logsTableBody tr.lv-row').length;
+            $('#pageInfo').text('已加载 ' + n + ' 条');
+            var showNext = !!hasNext && !!nextCursor;
+            $('#nextPage').toggleClass('d-none', !showNext);
+        }
+
+        var logWs = null;
+        var logWsReconnectTimer = null;
+        var logWsReconnectAttempt = 0;
+        var liveWsStopReconnect = false;
+
+        function updateLiveWsStatus(state) {
+            var el = $('#liveWsStatus');
+            el.removeClass('lv-live-off lv-live-wait lv-live-on lv-live-stop');
+            if (state === 'open') {
+                el.addClass('lv-live-on').text('实时').attr('title', 'WebSocket 已连接，新日志将自动出现在列表顶部');
+            } else if (state === 'connecting') {
+                el.addClass('lv-live-wait').text('连接中…').attr('title', '正在连接 WebSocket…');
+            } else if (state === 'reconnecting') {
+                el.addClass('lv-live-wait').text('重连中…').attr('title', '实时通道断开，正在自动重连');
+            } else if (state === 'stopped') {
+                el.addClass('lv-live-stop').text('实时不可用').attr('title', '已达连接上限，请稍后再打开「实时日志」重试');
+            } else if (state === 'paused') {
+                el.addClass('lv-live-off').text('实时已关闭').attr('title', '已关闭实时推送；打开「实时日志」开关可连接');
+            } else {
+                el.addClass('lv-live-off').text('实时断开').attr('title', '实时未连接');
+            }
+        }
+
+        function scheduleLogWsReconnect() {
+            if (liveWsStopReconnect || logWsReconnectTimer != null) {
+                return;
+            }
+            if (!$('#liveStreamEnabled').is(':checked')) {
+                return;
+            }
+            var delay = Math.min(30000, 1000 * Math.pow(2, Math.min(logWsReconnectAttempt, 5)));
+            logWsReconnectAttempt++;
+            logWsReconnectTimer = setTimeout(function() {
+                logWsReconnectTimer = null;
+                connectLogWebSocket();
+            }, delay);
+        }
+
+        function connectLogWebSocket() {
+            if (liveWsStopReconnect) {
+                return;
+            }
+            if (!$('#liveStreamEnabled').is(':checked')) {
+                updateLiveWsStatus('paused');
+                return;
+            }
+            updateLiveWsStatus('connecting');
+            var ws = new WebSocket(wsUrl);
+            logWs = ws;
+            ws.onopen = function() {
+                if (logWs !== ws) {
+                    return;
+                }
+                logWsReconnectAttempt = 0;
+                updateLiveWsStatus('open');
+            };
+            ws.onmessage = function(event) {
+                if (typeof event.data === 'string' && event.data.startsWith('TOO_MANY_CONNECTIONS:')) {
+                    liveWsStopReconnect = true;
+                    $('#liveStreamEnabled').prop('checked', false);
+                    alert(event.data.replace('TOO_MANY_CONNECTIONS:', ''));
+                    ws.close();
+                    updateLiveWsStatus('stopped');
+                    return;
+                }
+                let entry;
+                try {
+                    entry = JSON.parse(event.data);
+                } catch (e) {
+                    const raw = event.data;
+                    if (recentFpSet.has(raw)) {
+                        return;
+                    }
+                    rememberFingerprint(raw);
+                    prependLogRowToBody(raw, '');
+                    scheduleSortLogTableAndTrim();
+                    return;
+                }
+                const fp = logFingerprint(entry);
+                if (fp && recentFpSet.has(fp)) {
+                    return;
+                }
+                rememberFingerprint(fp);
+                const text = entry.rawLine || entry.message;
+                prependLogRowToBody(text, entry.level);
+                scheduleSortLogTableAndTrim();
+            };
+            ws.onclose = function() {
+                if (logWs !== ws) {
+                    return;
+                }
+                logWs = null;
+                if (liveWsStopReconnect) {
+                    return;
+                }
+                if (!$('#liveStreamEnabled').is(':checked')) {
+                    updateLiveWsStatus('paused');
+                    return;
+                }
+                updateLiveWsStatus('reconnecting');
+                scheduleLogWsReconnect();
+            };
+        }
+
+        function trimTableRows() {
+            const rows = $('#logsTableBody tr.lv-row');
+            if (rows.length > MAX_RENDER_ROWS) {
+                const extra = rows.length - MAX_RENDER_ROWS;
+                // 保留后面的 MAX_RENDER_ROWS 行：当时间倒序（新在上）且继续向更早分页时，丢弃最上面的多余行
+                rows.slice(0, extra).remove();
+            }
+        }
+    </script>
+    <div th:unless="${logviewerPage}"></div>
+</body>
+</html>

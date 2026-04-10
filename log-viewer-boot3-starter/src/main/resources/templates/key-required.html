@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>请输入访问Key</title>
+    <link th:href="@{/webjars/bootstrap/css/bootstrap.min.css}" href="/webjars/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="d-flex align-items-center justify-content-center vh-100">
+<div th:if="${logviewerPage}" class="card shadow p-4" style="min-width:320px;">
+    <h5 class="mb-3">请输入访问Key</h5>
+    <form method="get" th:action="@{/logviewer}" action="/logviewer">
+        <div class="mb-3">
+            <input type="text" name="key" class="form-control" placeholder="访问Key" required autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">进入</button>
+        <div class="text-danger mt-2" th:text="${error}"></div>
+    </form>
+</div>
+<div th:unless="${logviewerPage}"></div>
+</body>
+</html>
+

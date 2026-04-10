@@ -38,13 +38,13 @@ public class LogViewerController {
 
     @PostMapping("/logviewer/logs")
     @ResponseBody
-    public CursorPageResponse<LogEntry> getLogs(@RequestParam(required = false) String cursor,
-                                                  @RequestParam(required = false) String keyword,
-                                                  @RequestParam(required = false) String level,
-                                                  @RequestParam(required = false) String thread,
-                                                  @RequestParam(required = false) String logger,
-                                                  @RequestParam(required = false) String archiveDate,
-                                                  @RequestParam(defaultValue = "100") int size) {
+    public CursorPageResponse<LogEntry> getLogs(@RequestParam(value = "cursor", required = false) String cursor,
+                                                  @RequestParam(value = "keyword", required = false) String keyword,
+                                                  @RequestParam(value = "level", required = false) String level,
+                                                  @RequestParam(value = "thread", required = false) String thread,
+                                                  @RequestParam(value = "logger", required = false) String logger,
+                                                  @RequestParam(value = "archiveDate", required = false) String archiveDate,
+                                                  @RequestParam(value = "size", defaultValue = "100") int size) {
         return logService.getLogsCursor(keyword, level, thread, logger, archiveDate, cursor, size);
     }
 
